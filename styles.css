@@ -415,6 +415,27 @@ select:focus {
   margin-top: 15px;
 }
 
+.search-guardrail {
+  display: grid;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 10px;
+  border: 1px solid #cbd9ed;
+  border-radius: 6px;
+  background: #f3f7fd;
+}
+
+.search-guardrail strong {
+  color: var(--blue);
+  font-size: 11px;
+}
+
+.search-guardrail span {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
 .toggle-row {
   display: flex;
   align-items: center;
@@ -577,6 +598,89 @@ select:focus {
   background: #f7faff;
 }
 
+.search-dialog {
+  width: min(440px, calc(100vw - 32px));
+  max-width: none;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel, #fff);
+  color: var(--ink);
+  box-shadow: 0 18px 60px rgba(20, 38, 62, 0.24);
+}
+
+.search-dialog::backdrop {
+  background: rgba(17, 31, 49, 0.48);
+  backdrop-filter: blur(2px);
+}
+
+.search-dialog form {
+  padding: 22px;
+}
+
+.search-dialog-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.search-dialog-heading .eyebrow {
+  margin: 0 0 6px;
+}
+
+.search-dialog-heading h2 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: -0.03em;
+}
+
+.search-dialog-copy {
+  margin: 11px 0 17px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.search-dialog-label {
+  display: block;
+  margin: 13px 0 6px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.search-dialog-label span {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.search-dialog-guardrails {
+  display: grid;
+  gap: 4px;
+  margin-top: 15px;
+  padding: 11px;
+  border: 1px solid #cbd9ed;
+  border-radius: 6px;
+  background: #f3f7fd;
+  font-size: 11px;
+}
+
+.search-dialog-guardrails strong {
+  color: var(--blue);
+}
+
+.search-dialog-guardrails span {
+  color: var(--ink-soft);
+}
+
+.search-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 20px;
+}
+
 .queue-note {
   display: flex;
   align-items: flex-start;
@@ -659,6 +763,52 @@ select:focus {
 
 .form-grid label {
   min-width: 0;
+}
+
+.job-link-field {
+  min-width: 0;
+}
+
+.load-description {
+  margin-top: 7px;
+}
+
+.load-description:disabled {
+  color: var(--muted);
+  cursor: wait;
+}
+
+.remote-confirm {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.remote-confirm input {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  accent-color: var(--blue);
+}
+
+.remote-confirm strong,
+.remote-confirm small {
+  display: block;
+}
+
+.remote-confirm strong {
+  color: var(--ink-soft);
+  font-size: 10px;
+}
+
+.remote-confirm small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
 }
 
 .job-form > label textarea {

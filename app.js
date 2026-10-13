@@ -38,7 +38,6 @@
     resumeWordCount: document.getElementById("resume-word-count"),
     targetRoles: document.getElementById("target-roles"),
     targetLocation: document.getElementById("target-location"),
-    remoteOnly: document.getElementById("remote-only"),
     minimumMatch: document.getElementById("minimum-match"),
     dailyLimit: document.getElementById("daily-limit"),
     form: document.getElementById("job-form"),
@@ -49,12 +48,21 @@
     emptyCopy: document.getElementById("empty-copy"),
     emptyAction: document.getElementById("empty-action"),
     addJobToggle: document.getElementById("add-job-toggle"),
+    loadDescription: document.getElementById("load-description"),
     toast: document.getElementById("toast"),
-    sort: document.getElementById("sort-jobs")
+    sort: document.getElementById("sort-jobs"),
+    searchDialog: document.getElementById("search-dialog"),
+    searchForm: document.getElementById("search-form"),
+    searchDialogTitle: document.getElementById("search-dialog-title"),
+    searchProviderButton: document.getElementById("search-provider-button"),
+    searchKeywords: document.getElementById("search-keywords"),
+    searchLocation: document.getElementById("search-location")
   };
 
   let state = loadState();
   let activeFilter = "all";
+  let selectedSearchProvider = "";
+  let descriptionLoadPromise = null;
   let toastTimer = null;
   state.jobs = rescoreJobs(state.jobs);
 
@@ -67,7 +75,6 @@
         resume: typeof parsed.resume === "string" ? parsed.resume : "",
         roles: typeof parsed.roles === "string" ? parsed.roles : "Business Intelligence Analyst, Power BI Developer, Data Analyst",
         location: typeof parsed.location === "string" ? parsed.location : "",
-        remote: parsed.remote !== false,
         threshold: clampNumber(parsed.threshold, 51, 51, 100),
         dailyLimit: clampNumber(parsed.dailyLimit, 10, 1, 100),
         jobs: Array.isArray(parsed.jobs) ? parsed.jobs.filter(isValidJob) : []
@@ -83,7 +90,6 @@
       resume: "",
       roles: "Business Intelligence Analyst, Power BI Developer, Data Analyst",
       location: "",
-      remote: true,
       threshold: 51,
       dailyLimit: 10,
       jobs: []
@@ -205,7 +211,9 @@
   }
 
   function countAppliedToday() {
-    return state.jobs.filter(isAppliedToday).length;
+    return state.jobs.filter(function (job) {
+      return isEligibleJob(job) && isAppliedToday(job);
+    }).length;
   }
 
   function readiness(job) {
@@ -218,26 +226,44 @@
   }
 
   function isQualifyingMatch(job) {
-    return job.score > 50 && job.score >= state.threshold;
+    return isEligibleJob(job) && job.score > 50 && job.score >= state.threshold;
+  }
+
+  function isEligibleJob(job) {
+    return job.remote === true && (job.contractType === "C2C" || job.contractType === "1099");
+  }
+
+  function findContractType(text) {
+    const c2cPattern = /\b(?:c2c|corp(?:oration)?[\s-]+to[\s-]+corp(?:oration)?)\b/gi;
+    const contractorPattern = /\b1099(?:[\s-]*nec)?\b/gi;
+
+    function hasPositiveMention(pattern) {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        const before = text.slice(Math.max(0, match.index - 48), match.index).split(/[.;\n]/).pop();
+        const after = text.slice(match.index + match[0].length, match.index + match[0].length + 32);
+        const negativePrefix = before.match(/\b(?:not|no|without|excluding|except)\b([^.;\n]*)$/i);
+        if (negativePrefix && negativePrefix[1].length <= 32 &&
+          !/\b(?:but|however|although)\b/i.test(negativePrefix[1])) continue;
+        if (/^\s*(?:(?:is|are)\s+)?(?:not|unavailable|not offered|not accepted)\b/i.test(after)) continue;
+        return true;
+      }
+      return false;
+    }
+
+    if (hasPositiveMention(c2cPattern)) return "C2C";
+    if (hasPositiveMention(contractorPattern)) return "1099";
+    return "";
   }
 
   function updateSearchLinks() {
-    const roles = getRoleTerms().join(" ").trim();
-    const location = elements.targetLocation.value.trim();
+    const query = [getRoleTerms().join(" ").trim(), "remote"].filter(Boolean).join(" ");
     const diceParams = new URLSearchParams();
     const monsterParams = new URLSearchParams();
-    if (roles) {
-      diceParams.set("q", roles);
-      monsterParams.set("q", roles);
-    }
-    if (location) {
-      diceParams.set("location", location);
-      monsterParams.set("where", location);
-    }
-    if (state.remote) {
-      diceParams.set("filters.remote", "true");
-      monsterParams.set("whereType", "remote");
-    }
+    diceParams.set("q", query);
+    monsterParams.set("q", query);
+    diceParams.set("filters.remote", "true");
+    monsterParams.set("whereType", "remote");
     const hasResume = Boolean(state.resume.trim());
     const diceLink = document.getElementById("dice-search");
     const monsterLink = document.getElementById("monster-search");
@@ -247,6 +273,36 @@
       link.setAttribute("aria-disabled", String(!hasResume));
       link.tabIndex = hasResume ? 0 : -1;
     });
+  }
+
+  function openSearchDialog(provider) {
+    if (!state.resume.trim()) {
+      elements.resumeText.focus();
+      showToast("Add your resume before searching for matching jobs.");
+      return;
+    }
+    selectedSearchProvider = provider;
+    elements.searchDialogTitle.textContent = "Search " + provider;
+    elements.searchProviderButton.textContent = provider;
+    elements.searchKeywords.value = getRoleTerms().join(", ");
+    elements.searchLocation.value = elements.targetLocation.value.trim();
+    elements.searchDialog.showModal();
+    elements.searchKeywords.focus();
+  }
+
+  function buildSearchUrl(provider, keywords, location) {
+    const query = [keywords.trim(), "remote"].filter(Boolean).join(" ");
+    const params = new URLSearchParams();
+    params.set("q", query);
+    if (location.trim()) {
+      params.set(provider === "Dice" ? "location" : "where", location.trim());
+    }
+    if (provider === "Dice") {
+      params.set("filters.remote", "true");
+      return "https://www.dice.com/jobs?" + params.toString();
+    }
+    params.set("whereType", "remote");
+    return "https://www.monster.com/jobs/search?" + params.toString();
   }
 
   function escapeHtml(value) {
@@ -314,7 +370,8 @@
       '<div class="job-card-main">' +
         '<div class="job-title-row"><div><h3>' + escapeHtml(job.title) + '</h3>' +
         '</div></div>' +
-        '<div class="job-meta"><span>' + escapeHtml(job.source) + '</span><span>' + escapeHtml(location) +
+        '<div class="job-meta"><span>' + escapeHtml(job.source) + '</span><span>' +
+        escapeHtml(job.contractType) + '</span><span>Remote</span><span>' + escapeHtml(location) +
         '</span><span>Added ' + escapeHtml(dateText) + '</span></div>' +
         '<div class="job-reasons">' + reasons + '</div>' +
       '</div>' +
@@ -344,7 +401,7 @@
     document.getElementById("count-all").textContent = String(matchedJobs.length);
     document.getElementById("count-ready").textContent = String(readyCount);
     document.getElementById("count-applied").textContent = String(state.jobs.filter(function (job) {
-      return job.status === "applied";
+      return isEligibleJob(job) && job.status === "applied";
     }).length);
 
     const filtered = matchedJobs.filter(function (job) {
@@ -408,7 +465,6 @@
   function persistPreferences() {
     state.roles = elements.targetRoles.value;
     state.location = elements.targetLocation.value;
-    state.remote = elements.remoteOnly.checked;
     state.threshold = clampNumber(elements.minimumMatch.value, 51, 51, 100);
     state.dailyLimit = clampNumber(elements.dailyLimit.value, 10, 1, 100);
     elements.minimumMatch.value = String(state.threshold);
@@ -418,22 +474,34 @@
     render();
   }
 
-  function addJob(formData) {
-    const description = String(formData.get("description") || "").trim();
+  async function addJob(formData) {
+    let description = String(formData.get("description") || "").trim();
     if (!state.resume.trim()) {
       elements.formFeedback.textContent = "Add your resume before scoring a job.";
       elements.resumeText.focus();
       return;
     }
-    if (!description) {
-      elements.formFeedback.textContent = "Paste a job description to calculate a match.";
-      return;
-    }
-
     const urlValue = String(formData.get("url") || "").trim();
     const safeUrl = urlValue ? safeExternalUrl(urlValue) : "";
     if (urlValue && !safeUrl) {
       elements.formFeedback.textContent = "Use a valid http or https posting link, or leave the link blank.";
+      return;
+    }
+    if (!description) {
+      if (!urlValue) {
+        elements.formFeedback.textContent = "Enter a job description or provide a public Dice or Monster link.";
+        return;
+      }
+      description = await loadDescriptionFromUrl();
+      if (!description) return;
+    }
+    const contractType = findContractType(description + " " + urlValue);
+    if (!contractType) {
+      elements.formFeedback.textContent = "This isn’t a good option: the pasted description or URL doesn’t state C2C or 1099. Add a listing that explicitly mentions one of these contract types.";
+      return;
+    }
+    if (formData.get("remoteConfirmed") !== "on") {
+      elements.formFeedback.textContent = "Confirm the posting is fully remote. Hybrid and on-site roles are not eligible.";
       return;
     }
     const duplicate = safeUrl && state.jobs.some(function (job) { return job.url === safeUrl; });
@@ -447,6 +515,8 @@
       source: String(formData.get("source") || "Other"),
       url: safeUrl,
       description: description,
+      remote: true,
+      contractType: contractType,
       location: "",
       status: "saved",
       createdAt: new Date().toISOString()
@@ -470,6 +540,45 @@
     showToast("Job scored at " + job.score + "%. " + (readiness(job) === "ready" ? "It’s ready for you to apply." : "Review the match before applying."));
   }
 
+  function loadDescriptionFromUrl() {
+    if (descriptionLoadPromise) return descriptionLoadPromise;
+    const url = elements.form.querySelector('input[name="url"]').value.trim();
+    if (!url) {
+      elements.formFeedback.textContent = "Enter a Dice or Monster job link first.";
+      return Promise.resolve("");
+    }
+
+    elements.loadDescription.disabled = true;
+    elements.loadDescription.textContent = "Loading description...";
+    elements.formFeedback.textContent = "";
+    descriptionLoadPromise = (async function () {
+      try {
+        const response = await fetch("/api/job-description", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: url })
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          elements.formFeedback.textContent = result.error || "Could not load the description. Paste it instead.";
+          return "";
+        }
+        elements.form.querySelector('textarea[name="description"]').value = result.description;
+        elements.formFeedback.textContent = "Description loaded. Check it before scoring.";
+        return result.description;
+      } catch (error) {
+        console.error("Could not load a job description from its link.", error);
+        elements.formFeedback.textContent = "Could not load the description. Paste it instead.";
+        return "";
+      } finally {
+        descriptionLoadPromise = null;
+        elements.loadDescription.disabled = false;
+        elements.loadDescription.textContent = "Load description from link";
+      }
+    })();
+    return descriptionLoadPromise;
+  }
+
   function createId() {
     if (window.crypto && typeof window.crypto.randomUUID === "function") {
       return window.crypto.randomUUID();
@@ -481,7 +590,6 @@
     elements.resumeText.value = state.resume;
     elements.targetRoles.value = state.roles;
     elements.targetLocation.value = state.location;
-    elements.remoteOnly.checked = state.remote;
     elements.minimumMatch.value = String(state.threshold);
     elements.dailyLimit.value = String(state.dailyLimit);
   }
@@ -544,7 +652,7 @@
   [elements.targetRoles, elements.targetLocation].forEach(function (element) {
     element.addEventListener("input", persistPreferences);
   });
-  [elements.remoteOnly, elements.minimumMatch, elements.dailyLimit].forEach(function (element) {
+  [elements.minimumMatch, elements.dailyLimit].forEach(function (element) {
     element.addEventListener("change", persistPreferences);
   });
 
@@ -564,11 +672,24 @@
   });
   document.querySelectorAll(".source-link").forEach(function (link) {
     link.addEventListener("click", function (event) {
-      if (!state.resume.trim()) {
-        event.preventDefault();
-        elements.resumeText.focus();
-        showToast("Add your resume before searching for matching jobs.");
-      }
+      event.preventDefault();
+      openSearchDialog(link.id === "dice-search" ? "Dice" : "Monster");
+    });
+  });
+  elements.searchForm.addEventListener("submit", function (event) {
+    event.preventDefault();
+    if (!selectedSearchProvider) return;
+    const url = buildSearchUrl(
+      selectedSearchProvider,
+      elements.searchKeywords.value,
+      elements.searchLocation.value
+    );
+    window.open(url, "_blank", "noopener,noreferrer");
+    elements.searchDialog.close();
+  });
+  ["close-search-dialog", "cancel-search"].forEach(function (id) {
+    document.getElementById(id).addEventListener("click", function () {
+      elements.searchDialog.close();
     });
   });
   document.getElementById("close-job-form").addEventListener("click", function () {
@@ -576,7 +697,12 @@
   });
   elements.form.addEventListener("submit", function (event) {
     event.preventDefault();
-    addJob(new FormData(elements.form));
+    void addJob(new FormData(elements.form));
+  });
+  elements.loadDescription.addEventListener("click", loadDescriptionFromUrl);
+  elements.form.querySelector('input[name="url"]').addEventListener("blur", function () {
+    const description = elements.form.querySelector('textarea[name="description"]').value.trim();
+    if (this.value.trim() && !description) loadDescriptionFromUrl();
   });
   elements.list.addEventListener("click", handleJobAction);
   elements.sort.addEventListener("change", render);

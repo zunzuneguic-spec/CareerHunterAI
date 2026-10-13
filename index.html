@@ -28,7 +28,7 @@
             <p class="welcome-copy">Bring your resume and a job description together. See why a role matches, then keep your applications moving.</p>
           </div>
           <div class="search-sources" aria-label="Search job boards">
-            <span class="source-label">Search your target roles</span>
+            <span class="source-label">Search remote roles</span>
             <div class="source-actions">
               <a class="source-link dice-link" id="dice-search" href="https://www.dice.com/jobs" target="_blank" rel="noopener noreferrer">Search Dice <span aria-hidden="true">↗</span></a>
               <a class="source-link monster-link" id="monster-search" href="https://www.monster.com/jobs/search" target="_blank" rel="noopener noreferrer">Search Monster <span aria-hidden="true">↗</span></a>
@@ -90,13 +90,10 @@
 
               <label class="field-label" for="target-location">Location</label>
               <input id="target-location" type="text" placeholder="City, state, or country">
-              <label class="toggle-row" for="remote-only">
-                <span>
-                  <strong>Include remote roles</strong>
-                  <small>Keep remote opportunities in your search.</small>
-                </span>
-                <input id="remote-only" type="checkbox" checked>
-              </label>
+              <div class="search-guardrail" role="note">
+                <strong>Remote only · C2C or 1099 contracts</strong>
+                <span>On-site, hybrid, W-2, and permanent roles are not eligible.</span>
+              </div>
 
               <div class="settings-row">
                 <label for="minimum-match">
@@ -129,7 +126,7 @@
 
             <div class="queue-note" role="note">
               <span class="queue-note-icon" aria-hidden="true">i</span>
-              <p>Only roles scoring over 50% appear here. Career Hunter tracks your matches; you’ll submit on Dice or Monster yourself.</p>
+              <p>Only fully remote C2C or 1099 roles scoring over 50% appear here. Verify the posting details; Career Hunter tracks matches but does not scrape job boards.</p>
             </div>
 
             <form id="job-form" class="job-form" hidden>
@@ -149,14 +146,25 @@
                     <option value="Other">Other</option>
                   </select>
                 </label>
-                <label>
-                  <span class="field-label">Job posting link</span>
-                  <input name="url" type="url" placeholder="https://">
+                <div class="job-link-field">
+                  <label>
+                    <span class="field-label">Job posting link</span>
+                    <input name="url" type="url" placeholder="https://">
+                  </label>
+                  <button class="text-button load-description" id="load-description" type="button">Load description from link</button>
+                </div>
+                <label class="remote-confirm">
+                  <input name="remoteConfirmed" type="checkbox">
+                  <span>
+                    <strong>Confirmed fully remote</strong>
+                    <small>Exclude hybrid and on-site postings.</small>
+                  </span>
                 </label>
               </div>
               <label>
                 <span class="field-label">Job description</span>
-                <textarea name="description" rows="7" required placeholder="Paste the listing text here. Career Hunter compares it with your resume and shows the match score."></textarea>
+                <textarea name="description" rows="7" placeholder="Paste the listing text here, or load it from a public Dice or Monster link."></textarea>
+                <span class="field-hint">When you leave the URL field or click Score this job, Career Hunter tries to load a public description into this box. It won’t log in on your behalf; if loading is blocked, paste the description instead. C2C or 1099 must still be stated in the description or URL.</span>
               </label>
               <div class="form-footer">
                 <p id="form-feedback" aria-live="polite"></p>
@@ -198,6 +206,30 @@
       </footer>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <dialog id="search-dialog" class="search-dialog" aria-labelledby="search-dialog-title">
+      <form id="search-form">
+        <div class="search-dialog-heading">
+          <div>
+            <p class="eyebrow">REVIEW BEFORE SEARCHING</p>
+            <h2 id="search-dialog-title">Search Dice</h2>
+          </div>
+          <button class="icon-button" id="close-search-dialog" type="button" aria-label="Cancel search">×</button>
+        </div>
+        <p class="search-dialog-copy">Edit the role or skill keywords to broaden or narrow results. Your resume is not sent to the job site.</p>
+        <label class="search-dialog-label" for="search-keywords">Role or skill keywords</label>
+        <input id="search-keywords" name="keywords" type="text" autocomplete="off" placeholder="For example: Power BI, SQL, data analyst">
+        <label class="search-dialog-label" for="search-location">Location <span>(optional)</span></label>
+        <input id="search-location" name="location" type="text" autocomplete="off" placeholder="City, state, or country">
+        <div class="search-dialog-guardrails" role="note">
+          <strong>Filters included automatically</strong>
+          <span>Remote only</span>
+        </div>
+        <div class="search-dialog-actions">
+          <button class="button button-secondary" id="cancel-search" type="button">Cancel</button>
+          <button class="button button-primary" type="submit">Search <span id="search-provider-button">Dice</span></button>
+        </div>
+      </form>
+    </dialog>
     <script src="app.js"></script>
   </body>
 </html>

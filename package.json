@@ -1,0 +1,14 @@
+{
+  "name": "career-hunter-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local-first job search and resume matching workspace",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
