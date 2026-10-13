@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f3f6fa">
+    <title>Career Hunter | Job search workspace</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Career Hunter home">
+          <span class="brand-mark" aria-hidden="true">CH</span>
+          <span>Career Hunter</span>
+        </a>
+        <div class="privacy-status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>Saved in this browser</span>
+        </div>
+      </header>
+
+      <main>
+        <section class="welcome">
+          <div>
+            <p class="eyebrow">YOUR JOB SEARCH WORKSPACE</p>
+            <h1>Find the roles that fit.</h1>
+            <p class="welcome-copy">Bring your resume and a job description together. See why a role matches, then keep your applications moving.</p>
+          </div>
+          <div class="search-sources" aria-label="Search job boards">
+            <span class="source-label">Search your target roles</span>
+            <div class="source-actions">
+              <a class="source-link dice-link" id="dice-search" href="https://www.dice.com/jobs" target="_blank" rel="noopener noreferrer">Search Dice <span aria-hidden="true">↗</span></a>
+              <a class="source-link monster-link" id="monster-search" href="https://www.monster.com/jobs/search" target="_blank" rel="noopener noreferrer">Search Monster <span aria-hidden="true">↗</span></a>
+            </div>
+          </div>
+        </section>
+
+        <section class="metrics" aria-label="Application overview">
+          <div class="metric">
+            <span class="metric-label">Saved roles</span>
+            <strong id="metric-total">0</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Ready to apply</span>
+            <strong id="metric-ready">0</strong>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Applied today</span>
+            <strong id="metric-applied">0</strong>
+          </div>
+          <div class="metric metric-target">
+            <span class="metric-label">Today's application limit</span>
+            <strong><span id="metric-limit">10</span><span class="metric-unit">applications</span></strong>
+          </div>
+        </section>
+
+        <div class="workspace">
+          <aside class="profile-panel" aria-label="Resume and search preferences">
+            <section class="panel-section resume-section">
+              <div class="section-heading">
+                <div>
+                  <h2>Your resume</h2>
+                  <p>Match roles to the experience you share here.</p>
+                </div>
+                <span class="step-number">01</span>
+              </div>
+              <label class="field-label" for="resume-file">Upload your resume</label>
+              <input id="resume-file" type="file" accept=".txt,.md,text/plain,text/markdown">
+              <p class="field-hint">TXT or Markdown. For PDF or Word, copy and paste the text below.</p>
+              <label class="visually-hidden" for="resume-text">Required resume text</label>
+              <textarea id="resume-text" class="resume-input" rows="9" aria-required="true" placeholder="Add your resume to start. Paste the text here — experience, skills, education, and certifications all help improve your matches."></textarea>
+              <div class="resume-footer">
+                <span id="resume-state">No resume added</span>
+                <span id="resume-word-count">0 words</span>
+              </div>
+            </section>
+
+            <section class="panel-section preferences-section">
+              <div class="section-heading">
+                <div>
+                  <h2>Search preferences</h2>
+                  <p>Set the roles and guardrails that matter to you.</p>
+                </div>
+                <span class="step-number">02</span>
+              </div>
+              <label class="field-label" for="target-roles">Target roles</label>
+              <textarea id="target-roles" rows="2" placeholder="Business Intelligence Analyst, Power BI Developer"></textarea>
+              <p class="field-hint">Separate role titles with commas.</p>
+
+              <label class="field-label" for="target-location">Location</label>
+              <input id="target-location" type="text" placeholder="City, state, or country">
+              <label class="toggle-row" for="remote-only">
+                <span>
+                  <strong>Include remote roles</strong>
+                  <small>Keep remote opportunities in your search.</small>
+                </span>
+                <input id="remote-only" type="checkbox" checked>
+              </label>
+
+              <div class="settings-row">
+                <label for="minimum-match">
+                  <span class="field-label">Minimum match (over 50%)</span>
+                  <span class="input-with-suffix"><input id="minimum-match" type="number" min="51" max="100" value="51"><span>%</span></span>
+                </label>
+                <label for="daily-limit">
+                  <span class="field-label">Daily application limit</span>
+                  <span class="input-with-suffix"><input id="daily-limit" type="number" min="1" max="100" value="10"><span>/ day</span></span>
+                </label>
+              </div>
+            </section>
+
+            <div class="privacy-note">
+              <span class="privacy-icon" aria-hidden="true">↳</span>
+              <p>Your resume and saved jobs stay in this browser. Nothing is uploaded to a server.</p>
+            </div>
+          </aside>
+
+          <section class="jobs-panel" aria-labelledby="jobs-heading">
+            <div class="jobs-heading">
+              <div>
+                <p class="eyebrow">YOUR MATCH QUEUE</p>
+                <h2 id="jobs-heading">Roles worth a closer look</h2>
+              </div>
+              <button class="button button-primary" id="add-job-toggle" type="button">
+                <span aria-hidden="true">＋</span> Add a job
+              </button>
+            </div>
+
+            <div class="queue-note" role="note">
+              <span class="queue-note-icon" aria-hidden="true">i</span>
+              <p>Only roles scoring over 50% appear here. Career Hunter tracks your matches; you’ll submit on Dice or Monster yourself.</p>
+            </div>
+
+            <form id="job-form" class="job-form" hidden>
+              <div class="form-heading">
+                <div>
+                  <h3>Add a job to compare</h3>
+                  <p>Paste the job description. The match uses resume and description text only.</p>
+                </div>
+                <button class="icon-button" id="close-job-form" type="button" aria-label="Close add job form">×</button>
+              </div>
+              <div class="form-grid">
+                <label>
+                  <span class="field-label">Source</span>
+                  <select name="source">
+                    <option value="Dice">Dice</option>
+                    <option value="Monster">Monster</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </label>
+                <label>
+                  <span class="field-label">Job posting link</span>
+                  <input name="url" type="url" placeholder="https://">
+                </label>
+              </div>
+              <label>
+                <span class="field-label">Job description</span>
+                <textarea name="description" rows="7" required placeholder="Paste the listing text here. Career Hunter compares it with your resume and shows the match score."></textarea>
+              </label>
+              <div class="form-footer">
+                <p id="form-feedback" aria-live="polite"></p>
+                <button class="button button-primary" type="submit">Score this job</button>
+              </div>
+            </form>
+
+            <div class="queue-toolbar">
+              <div class="queue-tabs" role="group" aria-label="Filter matching jobs">
+                <button class="queue-tab active" type="button" aria-pressed="true" data-filter="all">Matches <span id="count-all">0</span></button>
+                <button class="queue-tab" type="button" aria-pressed="false" data-filter="ready">Ready <span id="count-ready">0</span></button>
+                <button class="queue-tab" type="button" aria-pressed="false" data-filter="applied">Applied <span id="count-applied">0</span></button>
+              </div>
+              <label class="sort-control" for="sort-jobs">Sort
+                <select id="sort-jobs">
+                  <option value="match">Best match</option>
+                  <option value="newest">Most recent</option>
+                </select>
+              </label>
+            </div>
+
+            <div id="job-list" class="job-list" aria-live="polite"></div>
+            <div id="empty-state" class="empty-state">
+              <div class="empty-art" aria-hidden="true">
+                <span class="empty-page"></span>
+                <span class="empty-check">✓</span>
+              </div>
+              <h3 id="empty-heading">Add your resume to get started.</h3>
+              <p id="empty-copy">Share your resume first. Career Hunter will compare job descriptions to your experience and show roles scoring above 50%.</p>
+              <button class="button button-secondary" id="empty-action" type="button">Add my resume</button>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <footer class="footer">
+        <span>Career Hunter · Local MVP</span>
+        <span>Matching is a guide, not a hiring decision.</span>
+      </footer>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
