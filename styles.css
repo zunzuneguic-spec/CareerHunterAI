@@ -172,8 +172,9 @@ h1 {
 }
 
 .source-actions {
-  display: flex;
-  gap: 9px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .source-link {
@@ -823,10 +824,24 @@ select:focus {
   margin-top: 10px;
 }
 
+.form-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
 .form-footer p {
   margin: 0;
   color: var(--red);
   font-size: 10px;
+}
+
+.button-secondary:disabled {
+  border-color: var(--line);
+  background: #f7f9fb;
+  color: var(--subtle);
+  cursor: not-allowed;
+  transform: none;
 }
 
 .queue-toolbar {
@@ -1286,7 +1301,7 @@ select:focus {
   }
 
   .source-actions {
-    flex-direction: column;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .source-link {
@@ -1346,6 +1361,19 @@ select:focus {
   .form-grid {
     grid-template-columns: 1fr;
     gap: 10px;
+  }
+
+  .form-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .form-actions {
+    width: 100%;
+  }
+
+  .form-actions .button {
+    flex: 1;
   }
 
   .job-card {

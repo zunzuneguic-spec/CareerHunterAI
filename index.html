@@ -30,8 +30,12 @@
           <div class="search-sources" aria-label="Search job boards">
             <span class="source-label">Search remote roles</span>
             <div class="source-actions">
-              <a class="source-link dice-link" id="dice-search" href="https://www.dice.com/jobs" target="_blank" rel="noopener noreferrer">Search Dice <span aria-hidden="true">↗</span></a>
-              <a class="source-link monster-link" id="monster-search" href="https://www.monster.com/jobs/search" target="_blank" rel="noopener noreferrer">Search Monster <span aria-hidden="true">↗</span></a>
+              <a class="source-link" href="https://www.dice.com/jobs" data-provider="Dice" target="_blank" rel="noopener noreferrer">Search Dice <span aria-hidden="true">↗</span></a>
+              <a class="source-link" href="https://www.monster.com/jobs/search" data-provider="Monster" target="_blank" rel="noopener noreferrer">Search Monster <span aria-hidden="true">↗</span></a>
+              <a class="source-link" href="https://www.linkedin.com/jobs/search/" data-provider="LinkedIn" target="_blank" rel="noopener noreferrer">Search LinkedIn <span aria-hidden="true">↗</span></a>
+              <a class="source-link" href="https://www.glassdoor.com/Job/jobs.htm" data-provider="Glassdoor" target="_blank" rel="noopener noreferrer">Search Glassdoor <span aria-hidden="true">↗</span></a>
+              <a class="source-link" href="https://www.occ.com.mx/empleos/" data-provider="OCC México" target="_blank" rel="noopener noreferrer">Search OCC · México <span aria-hidden="true">↗</span></a>
+              <a class="source-link" href="https://www.bumeran.com.mx/empleos/" data-provider="Bumeran México" target="_blank" rel="noopener noreferrer">Search Bumeran · México <span aria-hidden="true">↗</span></a>
             </div>
           </div>
         </section>
@@ -143,6 +147,10 @@
                   <select name="source">
                     <option value="Dice">Dice</option>
                     <option value="Monster">Monster</option>
+                    <option value="LinkedIn">LinkedIn</option>
+                    <option value="Glassdoor">Glassdoor</option>
+                    <option value="OCC México">OCC México</option>
+                    <option value="Bumeran México">Bumeran México</option>
                     <option value="Other">Other</option>
                   </select>
                 </label>
@@ -168,7 +176,10 @@
               </label>
               <div class="form-footer">
                 <p id="form-feedback" aria-live="polite"></p>
-                <button class="button button-primary" type="submit">Score this job</button>
+                <div class="form-actions">
+                  <button class="button button-secondary" id="clear-job-details" type="button" disabled>Clear</button>
+                  <button class="button button-primary" type="submit">Score this job</button>
+                </div>
               </div>
             </form>
 
@@ -222,7 +233,7 @@
         <input id="search-location" name="location" type="text" autocomplete="off" placeholder="City, state, or country">
         <div class="search-dialog-guardrails" role="note">
           <strong>Filters included automatically</strong>
-          <span>Remote only</span>
+          <span>Remote keywords and supported filters. Verify each posting’s work arrangement.</span>
         </div>
         <div class="search-dialog-actions">
           <button class="button button-secondary" id="cancel-search" type="button">Cancel</button>

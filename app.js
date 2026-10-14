@@ -42,6 +42,7 @@
     dailyLimit: document.getElementById("daily-limit"),
     form: document.getElementById("job-form"),
     formFeedback: document.getElementById("form-feedback"),
+    clearJobDetails: document.getElementById("clear-job-details"),
     list: document.getElementById("job-list"),
     empty: document.getElementById("empty-state"),
     emptyHeading: document.getElementById("empty-heading"),
@@ -257,22 +258,22 @@
   }
 
   function updateSearchLinks() {
-    const query = [getRoleTerms().join(" ").trim(), "remote"].filter(Boolean).join(" ");
-    const diceParams = new URLSearchParams();
-    const monsterParams = new URLSearchParams();
-    diceParams.set("q", query);
-    monsterParams.set("q", query);
-    diceParams.set("filters.remote", "true");
-    monsterParams.set("whereType", "remote");
+    const keywords = getRoleTerms().join(" ").trim();
     const hasResume = Boolean(state.resume.trim());
-    const diceLink = document.getElementById("dice-search");
-    const monsterLink = document.getElementById("monster-search");
-    diceLink.href = "https://www.dice.com/jobs" + (diceParams.toString() ? "?" + diceParams.toString() : "");
-    monsterLink.href = "https://www.monster.com/jobs/search" + (monsterParams.toString() ? "?" + monsterParams.toString() : "");
-    [diceLink, monsterLink].forEach(function (link) {
+    document.querySelectorAll(".source-link").forEach(function (link) {
+      link.href = buildSearchUrl(
+        link.dataset.provider,
+        keywords,
+        defaultSearchLocation(link.dataset.provider)
+      );
       link.setAttribute("aria-disabled", String(!hasResume));
       link.tabIndex = hasResume ? 0 : -1;
     });
+  }
+
+  function defaultSearchLocation(provider) {
+    if (provider === "OCC México" || provider === "Bumeran México") return "México";
+    return elements.targetLocation.value.trim();
   }
 
   function openSearchDialog(provider) {
@@ -285,24 +286,51 @@
     elements.searchDialogTitle.textContent = "Search " + provider;
     elements.searchProviderButton.textContent = provider;
     elements.searchKeywords.value = getRoleTerms().join(", ");
-    elements.searchLocation.value = elements.targetLocation.value.trim();
+    elements.searchLocation.value = defaultSearchLocation(provider);
     elements.searchDialog.showModal();
     elements.searchKeywords.focus();
   }
 
   function buildSearchUrl(provider, keywords, location) {
-    const query = [keywords.trim(), "remote"].filter(Boolean).join(" ");
     const params = new URLSearchParams();
-    params.set("q", query);
-    if (location.trim()) {
-      params.set(provider === "Dice" ? "location" : "where", location.trim());
-    }
+    const remoteQuery = [keywords.trim(), "remote"].filter(Boolean).join(" ");
+    const encodedLocation = location.trim();
+
     if (provider === "Dice") {
+      params.set("q", remoteQuery);
+      if (encodedLocation) params.set("location", encodedLocation);
       params.set("filters.remote", "true");
       return "https://www.dice.com/jobs?" + params.toString();
     }
-    params.set("whereType", "remote");
-    return "https://www.monster.com/jobs/search?" + params.toString();
+    if (provider === "Monster") {
+      params.set("q", remoteQuery);
+      if (encodedLocation) params.set("where", encodedLocation);
+      params.set("whereType", "remote");
+      return "https://www.monster.com/jobs/search?" + params.toString();
+    }
+    if (provider === "LinkedIn") {
+      if (keywords.trim()) params.set("keywords", keywords.trim());
+      if (encodedLocation) params.set("location", encodedLocation);
+      params.set("f_WT", "2");
+      return "https://www.linkedin.com/jobs/search/?" + params.toString();
+    }
+    if (provider === "Glassdoor") {
+      if (keywords.trim()) params.set("sc.keyword", keywords.trim());
+      if (encodedLocation) params.set("locKeyword", encodedLocation);
+      params.set("remoteWorkType", "1");
+      return "https://www.glassdoor.com/Job/jobs.htm?" + params.toString();
+    }
+    if (provider === "OCC México") {
+      params.set("q", remoteQuery);
+      if (encodedLocation) params.set("location", encodedLocation);
+      return "https://www.occ.com.mx/empleos/?" + params.toString();
+    }
+    if (provider === "Bumeran México") {
+      params.set("q", remoteQuery);
+      if (encodedLocation) params.set("location", encodedLocation);
+      return "https://www.bumeran.com.mx/empleos/?" + params.toString();
+    }
+    throw new Error("Unsupported job search provider: " + provider);
   }
 
   function escapeHtml(value) {
@@ -534,17 +562,36 @@
     state.jobs.push(job);
     saveState();
     render();
-    elements.form.reset();
-    elements.formFeedback.textContent = "";
-    elements.form.hidden = true;
+    updateClearButton();
     showToast("Job scored at " + job.score + "%. " + (readiness(job) === "ready" ? "It’s ready for you to apply." : "Review the match before applying."));
+  }
+
+  function updateClearButton() {
+    const url = elements.form.querySelector('input[name="url"]').value.trim();
+    const description = elements.form.querySelector('textarea[name="description"]').value.trim();
+    elements.clearJobDetails.disabled = Boolean(descriptionLoadPromise) || (!url && !description);
+  }
+
+  function clearJobDetails() {
+    if (descriptionLoadPromise) return;
+    elements.form.querySelector('input[name="url"]').value = "";
+    elements.form.querySelector('textarea[name="description"]').value = "";
+    elements.form.querySelector('input[name="remoteConfirmed"]').checked = false;
+    elements.formFeedback.textContent = "";
+    updateClearButton();
+    elements.form.querySelector('input[name="url"]').focus();
   }
 
   function loadDescriptionFromUrl() {
     if (descriptionLoadPromise) return descriptionLoadPromise;
     const url = elements.form.querySelector('input[name="url"]').value.trim();
+    const source = elements.form.querySelector('select[name="source"]').value;
     if (!url) {
       elements.formFeedback.textContent = "Enter a Dice or Monster job link first.";
+      return Promise.resolve("");
+    }
+    if (source !== "Dice" && source !== "Monster") {
+      elements.formFeedback.textContent = "Automatic description loading is available for Dice and Monster only. Paste the description from this listing.";
       return Promise.resolve("");
     }
 
@@ -574,9 +621,20 @@
         descriptionLoadPromise = null;
         elements.loadDescription.disabled = false;
         elements.loadDescription.textContent = "Load description from link";
+        updateClearButton();
       }
     })();
+    updateClearButton();
     return descriptionLoadPromise;
+  }
+
+  function syncDescriptionLoader() {
+    const source = elements.form.querySelector('select[name="source"]').value;
+    const canLoadDescription = source === "Dice" || source === "Monster";
+    elements.loadDescription.disabled = !canLoadDescription || Boolean(descriptionLoadPromise);
+    elements.loadDescription.title = canLoadDescription
+      ? ""
+      : "Paste descriptions from this job board; automatic loading currently supports Dice and Monster.";
   }
 
   function createId() {
@@ -673,7 +731,7 @@
   document.querySelectorAll(".source-link").forEach(function (link) {
     link.addEventListener("click", function (event) {
       event.preventDefault();
-      openSearchDialog(link.id === "dice-search" ? "Dice" : "Monster");
+      openSearchDialog(link.dataset.provider);
     });
   });
   elements.searchForm.addEventListener("submit", function (event) {
@@ -695,6 +753,10 @@
   document.getElementById("close-job-form").addEventListener("click", function () {
     elements.form.hidden = true;
   });
+  elements.clearJobDetails.addEventListener("click", clearJobDetails);
+  elements.form.querySelector('select[name="source"]').addEventListener("change", syncDescriptionLoader);
+  elements.form.querySelector('input[name="url"]').addEventListener("input", updateClearButton);
+  elements.form.querySelector('textarea[name="description"]').addEventListener("input", updateClearButton);
   elements.form.addEventListener("submit", function (event) {
     event.preventDefault();
     void addJob(new FormData(elements.form));
@@ -702,7 +764,10 @@
   elements.loadDescription.addEventListener("click", loadDescriptionFromUrl);
   elements.form.querySelector('input[name="url"]').addEventListener("blur", function () {
     const description = elements.form.querySelector('textarea[name="description"]').value.trim();
-    if (this.value.trim() && !description) loadDescriptionFromUrl();
+    const source = elements.form.querySelector('select[name="source"]').value;
+    if (this.value.trim() && !description && (source === "Dice" || source === "Monster")) {
+      loadDescriptionFromUrl();
+    }
   });
   elements.list.addEventListener("click", handleJobAction);
   elements.sort.addEventListener("change", render);
@@ -721,6 +786,7 @@
   window.addEventListener("storage", function (event) {
     if (event.key !== STORAGE_KEY) return;
     state = loadState();
+    syncDescriptionLoader();
     hydrateInputs();
     render();
     showToast("Saved data was updated in another tab.");

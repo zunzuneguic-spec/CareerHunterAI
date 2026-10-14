@@ -27,8 +27,8 @@ Run the local app server to use all features, including loading a job descriptio
 ### Use Career Hunter
 
 1. Add your resume text or choose a `.txt`/`.md` file. A resume is required before you can search job boards or compare listings. PDF and Word files are not parsed in this MVP; copy their text into the resume field.
-2. Set target roles, location, match threshold, and daily application limit. Click Search Dice or Search Monster to review and edit role/skill keywords and location before opening that site's search. A remote term and remote filter are added automatically; contract type is not filtered in the search. Job boards may interpret search keywords and filters differently.
-3. Search Dice or Monster and enter the listing link. When you leave the link field or choose to score the job, Career Hunter tries to load a public description into the description box. If the site blocks access or requires sign-in, paste the description yourself. Career Hunter checks the description and URL text for an explicit C2C or 1099 mention. Confirm that it is fully remote before calculating a match. Listings without C2C/1099 evidence, plus hybrid and on-site roles, are excluded. The default match is 51%, so only roles scoring above 50% are shown.
+2. Set target roles, location, match threshold, and daily application limit. Search Dice, Monster, LinkedIn, Glassdoor, OCC México, or Bumeran México to review and edit role/skill keywords and location before opening that site's search. Mexico job boards default to Mexico as the search location. Remote keywords and provider-specific filters are added where supported; contract type is not filtered in the search. Job boards may interpret keywords and filters differently.
+3. Search a job board and enter the listing link. Automatic description loading is available for Dice and Monster public listings; for LinkedIn, Glassdoor, OCC, or Bumeran, paste the job description yourself. Career Hunter checks the description and URL text for an explicit C2C or 1099 mention. Confirm that it is fully remote before calculating a match. Listings without C2C/1099 evidence, plus hybrid and on-site roles, are excluded. The default match is 51%, so only roles scoring above 50% are shown.
 4. Open the posting to apply on the job board, then mark it submitted in Career Hunter to track your daily limit.
 
 Resume text, preferences, and saved jobs are stored in this browser's local storage. The resume is not sent to Dice, Monster, or the local server; the local server requests only the job URL when loading a public description. Clearing this browser's site data will erase saved data.
@@ -36,7 +36,7 @@ Resume text, preferences, and saved jobs are stored in this browser's local stor
 ## Current limitations
 
 - The MVP calculates a transparent keyword-overlap score; it does not use an AI service. Only roles scoring above 50% and meeting your chosen minimum match are kept in the match queue.
-- Job listings are added by pasting their details or attempting to load a public description from a Dice or Monster link. Sites may block loading or require sign-in; the app does not log in on the user's behalf.
+- Job searches include Dice, Monster, LinkedIn, Glassdoor, OCC México, and Bumeran México. Job listings are added by pasting their details or attempting to load a public description from a Dice or Monster link. Other providers' descriptions must be pasted manually; sites may block loading or require sign-in, and the app does not log in on the user's behalf.
 - Remote status is confirmed manually from each listing. The app checks the description and URL text for C2C/1099 keywords and may load a public description from the supported job-board domains; verify the details on the employer's posting.
 - Application submission remains on the job board. The MVP does not sign in, fill, or submit external application forms.
 
