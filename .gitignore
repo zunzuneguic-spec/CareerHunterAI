@@ -222,3 +222,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Secrets: keep your Anthropic API key out of Git
+.env

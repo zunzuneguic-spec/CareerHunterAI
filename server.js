@@ -1,12 +1,31 @@
 const express = require('express');
 const path = require('path');
+const { analyzeJob } = require('./analyzer');
+
+// Load ANTHROPIC_API_KEY (and other settings) from a local .env file if one exists.
+try {
+  process.loadEnvFile(path.join(__dirname, '.env'));
+} catch (error) {
+  // No .env file: use variables already set in the shell.
+}
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
 const allowedHosts = new Set(['dice.com', 'www.dice.com', 'monster.com', 'www.monster.com']);
 const maxPageBytes = 2 * 1024 * 1024;
 
-app.use(express.json({ limit: '2kb' }));
+const smallJson = express.json({ limit: '2kb' });
+const analysisJson = express.json({ limit: '300kb' });
+
+// Created on first use so the app still starts (with keyword scoring only) without an API key.
+// Tests swap in a fake client through app.locals.anthropicClient.
+function getAnthropicClient() {
+  if (app.locals.anthropicClient) return app.locals.anthropicClient;
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  const Anthropic = require('@anthropic-ai/sdk');
+  app.locals.anthropicClient = new Anthropic();
+  return app.locals.anthropicClient;
+}
 
 function isAllowedJobUrl(value) {
   try {
@@ -148,7 +167,7 @@ async function fetchJobDescription(value) {
   throw error;
 }
 
-app.post('/api/job-description', async (req, res) => {
+app.post('/api/job-description', smallJson, async (req, res) => {
   try {
     const description = await fetchJobDescription(String(req.body && req.body.url || ''));
     res.json({ description });
@@ -156,6 +175,26 @@ app.post('/api/job-description', async (req, res) => {
     if (!error.status) console.error('Could not load job description.', error);
     res.status(error.status || 502).json({
       error: error.status ? error.message : 'Could not reach the job site. Paste the job description instead.'
+    });
+  }
+});
+
+// Sends the resume and job description to Claude only; never to Dice or Monster.
+app.post('/api/analyze-job', analysisJson, async (req, res) => {
+  const client = getAnthropicClient();
+  if (!client) {
+    res.status(503).json({ error: 'AI analysis is off because ANTHROPIC_API_KEY is not set. Showing the keyword score instead.' });
+    return;
+  }
+  try {
+    const body = req.body || {};
+    res.json(await analyzeJob(client, body.resume, body.description));
+  } catch (error) {
+    // Messages from analyzer.js are safe to show; anything else (network, API errors) is reported generically.
+    const ownError = error.expose === true;
+    if (!ownError) console.error('AI job analysis failed.', error);
+    res.status(ownError ? error.status : 502).json({
+      error: ownError ? error.message : 'AI analysis is unavailable right now. Showing the keyword score instead.'
     });
   }
 });
