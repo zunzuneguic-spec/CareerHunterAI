@@ -1375,3 +1375,50 @@ select:focus {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* AI analysis inside a job card */
+.ai-analysis {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 0.875rem;
+}
+
+.ai-summary {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.ai-warning {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--amber-wash);
+  color: var(--amber);
+}
+
+.ai-label {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.gap-chip {
+  background: var(--red-wash);
+  color: var(--red);
+}
+
+.cover-letter summary {
+  cursor: pointer;
+  color: var(--blue);
+}
+
+.cover-letter textarea {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px;
+  resize: vertical;
+}

@@ -189,11 +189,61 @@
     return { score: score, reasons: reasons.slice(0, 5) };
   }
 
+  // Short fingerprint of the resume, so an AI result is only reused for the resume it was made from.
+  function resumeFingerprint(text) {
+    let hash = 0;
+    const value = String(text || "").trim();
+    for (let index = 0; index < value.length; index += 1) {
+      hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
+    }
+    return value.length + ":" + hash;
+  }
+
+  function hasFreshAi(job) {
+    const ai = job.ai;
+    return Boolean(ai && Number.isFinite(ai.score) && Array.isArray(ai.strengths) && Array.isArray(ai.gaps) &&
+      ai.resumeFingerprint === resumeFingerprint(state.resume));
+  }
+
+  // Uses the AI score when it matches the current resume, otherwise the keyword score.
+  function applyScore(job) {
+    const match = scoreJob(job);
+    const updated = Object.assign({}, job, { keywordScore: match.score });
+    if (hasFreshAi(job)) {
+      updated.score = job.ai.score;
+      updated.reasons = job.ai.strengths.length ? job.ai.strengths : match.reasons;
+    } else {
+      updated.score = match.score;
+      updated.reasons = match.reasons;
+    }
+    return updated;
+  }
+
   function rescoreJobs(jobs) {
-    return jobs.map(function (job) {
-      const match = scoreJob(job);
-      return Object.assign({}, job, { score: match.score, reasons: match.reasons });
-    });
+    return jobs.map(applyScore);
+  }
+
+  // Asks the local server to analyze the job with Claude. Returns null when AI is unavailable,
+  // so the caller keeps the keyword score. The resume goes only to the local server and Claude.
+  async function requestAiAnalysis(description) {
+    try {
+      const response = await fetch("/api/analyze-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resume: state.resume, description: description })
+      });
+      const result = await response.json();
+      if (!response.ok) return { error: result.error || "AI analysis is unavailable. Showing the keyword score instead." };
+      return {
+        analysis: Object.assign({}, result, {
+          resumeFingerprint: resumeFingerprint(state.resume),
+          analyzedAt: new Date().toISOString()
+        })
+      };
+    } catch (error) {
+      console.error("AI analysis request failed.", error);
+      return { error: "AI analysis is unavailable. Showing the keyword score instead." };
+    }
   }
 
   function inferJobTitle(description, source) {
@@ -366,6 +416,31 @@
         escapeHtml(job.id) + '">Mark as applied</button>';
     }
 
+    const freshAi = hasFreshAi(job);
+    let aiSection = "";
+    if (freshAi) {
+      const ai = job.ai;
+      const warnings = [];
+      if (!ai.fullyRemote) warnings.push("AI did not find a clear fully-remote statement. Double-check the posting.");
+      if (!/C2C|1099/.test(ai.contractType)) warnings.push("AI read the contract type as “" + ai.contractType + "”. Double-check C2C/1099 terms.");
+      aiSection = '<div class="ai-analysis">' +
+        (ai.summary ? '<p class="ai-summary">' + escapeHtml(ai.summary) + '</p>' : "") +
+        warnings.map(function (warning) {
+          return '<p class="ai-warning">' + escapeHtml(warning) + '</p>';
+        }).join("") +
+        (ai.gaps.length ? '<div class="job-reasons"><span class="ai-label">Gaps:</span>' + ai.gaps.map(function (gap) {
+          return '<span class="reason-chip gap-chip">' + escapeHtml(gap) + '</span>';
+        }).join("") + '</div>' : "") +
+        (ai.coverLetter ? '<details class="cover-letter"><summary>Cover letter draft (review and edit before using)</summary>' +
+          '<textarea readonly rows="10">' + escapeHtml(ai.coverLetter) + '</textarea>' +
+          '<button class="text-button" type="button" data-action="copy-letter" data-id="' + escapeHtml(job.id) +
+          '">Copy cover letter</button></details>' : "") +
+      '</div>';
+    } else if (status !== "applied" && status !== "skipped") {
+      aiSection = '<div class="ai-analysis"><button class="text-button" type="button" data-action="analyze" data-id="' +
+        escapeHtml(job.id) + '">' + (job.ai ? "Re-run AI analysis for your updated resume" : "Run AI analysis") + '</button></div>';
+    }
+
     return '<article class="job-card">' +
       '<div class="job-card-main">' +
         '<div class="job-title-row"><div><h3>' + escapeHtml(job.title) + '</h3>' +
@@ -374,9 +449,11 @@
         escapeHtml(job.contractType) + '</span><span>Remote</span><span>' + escapeHtml(location) +
         '</span><span>Added ' + escapeHtml(dateText) + '</span></div>' +
         '<div class="job-reasons">' + reasons + '</div>' +
+        aiSection +
       '</div>' +
       '<div class="job-card-side">' +
-        '<div class="match-badge ' + badgeClass + '"><strong>' + job.score + '%</strong><span>resume match</span></div>' +
+        '<div class="match-badge ' + badgeClass + '"><strong>' + job.score + '%</strong><span>' +
+        (freshAi ? "AI match" : "keyword match") + '</span></div>' +
         '<div class="job-actions">' + action +
           (status !== "applied" && status !== "skipped" ?
             '<button class="text-button" type="button" data-action="skip" data-id="' +
@@ -522,9 +599,17 @@
       createdAt: new Date().toISOString()
     };
     job.title = inferJobTitle(description, job.source);
-    const match = scoreJob(job);
-    job.score = match.score;
-    job.reasons = match.reasons;
+
+    const submitButton = elements.form.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
+    elements.formFeedback.textContent = "Analyzing the job with AI...";
+    const aiResult = await requestAiAnalysis(description);
+    if (submitButton) submitButton.disabled = false;
+    elements.formFeedback.textContent = "";
+    if (aiResult.analysis) job.ai = aiResult.analysis;
+    Object.assign(job, applyScore(job));
+    if (aiResult.error) showToast(aiResult.error);
+
     if (!isQualifyingMatch(job)) {
       elements.formFeedback.textContent = job.score <= 50
         ? "This role scored " + job.score + "%. It wasn’t added because matches must be over 50%."
@@ -537,7 +622,7 @@
     elements.form.reset();
     elements.formFeedback.textContent = "";
     elements.form.hidden = true;
-    showToast("Job scored at " + job.score + "%. " + (readiness(job) === "ready" ? "It’s ready for you to apply." : "Review the match before applying."));
+    showToast("Job scored at " + job.score + "%" + (job.ai ? " by AI" : " by keywords (AI unavailable)") + ". " + (readiness(job) === "ready" ? "It’s ready for you to apply." : "Review the match before applying."));
   }
 
   function loadDescriptionFromUrl() {
@@ -601,6 +686,33 @@
     if (!job) return;
 
     if (button.dataset.action === "open") {
+      return;
+    }
+    if (button.dataset.action === "copy-letter") {
+      if (!job.ai || !navigator.clipboard) {
+        showToast("Select the cover letter text and copy it manually.");
+        return;
+      }
+      navigator.clipboard.writeText(job.ai.coverLetter).then(function () {
+        showToast("Cover letter copied. Review and personalize it before sending.");
+      }, function () {
+        showToast("Select the cover letter text and copy it manually.");
+      });
+      return;
+    }
+    if (button.dataset.action === "analyze") {
+      button.disabled = true;
+      button.textContent = "Analyzing with AI...";
+      void requestAiAnalysis(job.description).then(function (result) {
+        const current = state.jobs.find(function (item) { return item.id === job.id; });
+        if (current && result.analysis) {
+          current.ai = result.analysis;
+          state.jobs = rescoreJobs(state.jobs);
+          saveState();
+        }
+        render();
+        showToast(result.error || "AI analysis updated.");
+      });
       return;
     }
     if (button.dataset.action === "applied") {
